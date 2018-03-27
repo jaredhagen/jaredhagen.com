@@ -28,15 +28,6 @@ Mappings:
       Subdomain: www
 
 Resources:
-  NakedBucket:
-    Type: AWS::S3::Bucket
-    Condition: CreateProdResources
-    Properties:
-      BucketName: !Ref NakedDomain
-      WebsiteConfiguration:
-        RedirectAllRequestsTo:
-          HostName: !Join [ ".", [ !FindInMap [ EnvironmentSubdomain, !Ref Environment, Subdomain ], !Ref NakedDomain ] ]
-          Protocol: https
   Bucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -107,3 +98,59 @@ Resources:
       DomainValidationOptions:
         - DomainName: !Join [ ".", [ !FindInMap [ EnvironmentSubdomain, !Ref Environment, Subdomain ], !Ref NakedDomain ] ]
           ValidationDomain: !Ref NakedDomain
+
+  NakedBucket:
+    Type: AWS::S3::Bucket
+    Condition: CreateProdResources
+    Properties:
+      BucketName: !Ref NakedDomain
+      WebsiteConfiguration:
+        RedirectAllRequestsTo:
+          HostName: !Join [ ".", [ !FindInMap [ EnvironmentSubdomain, !Ref Environment, Subdomain ], !Ref NakedDomain ] ]
+          Protocol: https
+  NakedCloudFrontDistribution:
+    Type: 'AWS::CloudFront::Distribution'
+    Condition: CreateProdResources
+    Properties:
+      DistributionConfig:
+        Aliases: 
+          - !Ref NakedDomain
+        Enabled: True
+        Origins:
+          - DomainName: !Select
+              - 1
+              - !Split ["//", !GetAtt NakedBucket.WebsiteURL]
+            Id: origin
+            CustomOriginConfig:
+              OriginProtocolPolicy: http-only
+        DefaultCacheBehavior:
+          TargetOriginId: origin
+          DefaultTTL: 5
+          MaxTTL: 30
+          ForwardedValues:
+            QueryString: false
+          ViewerProtocolPolicy: redirect-to-https
+        ViewerCertificate:
+          AcmCertificateArn: !Ref NakedSSLCertificate
+          SslSupportMethod: sni-only
+  NakedSSLCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Condition: CreateProdResources
+    Properties:
+      DomainName: !Ref NakedDomain
+  NakedDNS:
+    Type: AWS::Route53::RecordSetGroup
+    Condition: CreateProdResources
+    Properties:
+      HostedZoneName: !Join [ "", [ !Ref NakedDomain , "." ] ] 
+      RecordSets:
+        - Name: !Ref NakedDomain
+          Type: A
+          AliasTarget:
+            HostedZoneId: !Ref CloudFrontHostedZoneId
+            DNSName: !GetAtt NakedCloudFrontDistribution.DomainName
+        - Name: !Ref NakedDomain
+          Type: AAAA
+          AliasTarget:
+            HostedZoneId: !Ref CloudFrontHostedZoneId
+            DNSName: !GetAtt NakedCloudFrontDistribution.DomainName
