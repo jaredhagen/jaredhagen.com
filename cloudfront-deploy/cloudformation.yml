@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Cloudformation for jaredhagen.com Cloudfront
+Description: Cloudformation for a static website using S3 and Cloudfront
 
 Parameters:  
   CloudFrontHostedZoneId:
@@ -14,7 +14,6 @@ Parameters:
       - prod
   NakedDomain:
     Description: The Naked Domain for the static website
-    Default: jaredhagen.com
     Type: String
 
 Conditions: 
