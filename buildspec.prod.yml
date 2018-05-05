@@ -1,0 +1,6 @@
+version: 0.2
+
+phases:
+  post_build:
+    commands:
+      - aws s3 sync --acl public-read ./dist s3://www.jaredhagen.com
