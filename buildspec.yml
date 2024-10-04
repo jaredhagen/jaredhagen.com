@@ -1,6 +1,0 @@
-version: 0.2
-
-phases:
-  post_build:
-    commands:
-      - aws s3 cp --recursive --acl public-read ./dist s3://dev.jaredhagen.com

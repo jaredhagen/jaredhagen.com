@@ -1,1 +1,0 @@
-aws cloudformation update-stack --stack-name dev-jaredhagen-ui --template-body file://cloudfront-deploy/cloudformation.yml --parameters ParameterKey=Environment,ParameterValue=dev,ParameterKey=NakedDomain,ParameterValue=jaredhagen.com
