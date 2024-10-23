@@ -9,6 +9,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "jeasings": "^0.0.16",
     "pixi.js": "^8.4.1",
     "three": "^0.169.0",
     "two.js": "^0.8.14"

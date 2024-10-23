@@ -1,11 +1,12 @@
 import * as THREE from "three";
 import * as Animations from "./animations";
 import * as Colors from "./colors";
+import JEASINGS from "jeasings";
 
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
 let ISLAND_COUNT = 0;
-let SPEED_MODIFIER = 0.25;
+let SPEED_MODIFIER = 0.5;
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
@@ -19,9 +20,12 @@ document.body.appendChild(renderer.domElement);
 
 const clock = new THREE.Clock();
 
-scene.add(new THREE.AmbientLight(Colors.AMBIENT_LIGHT_COLOR));
+scene.add(new THREE.AmbientLight(new THREE.Color(Colors.AMBIENT_LIGHT_COLOR)));
 
-const light = new THREE.DirectionalLight(Colors.DIRECITONAL_LIGHT_COLOR, 2.5);
+const light = new THREE.DirectionalLight(
+  new THREE.Color(Colors.DIRECITONAL_LIGHT_COLOR),
+  2.5
+);
 light.position.set(0, 0, 1);
 light.castShadow = true;
 light.shadow.camera.zoom = 4; // tighter shadow map
@@ -29,7 +33,7 @@ scene.add(light);
 
 const geometryBackground = new THREE.PlaneGeometry(1000, 1000);
 const materialBackground = new THREE.MeshPhongMaterial({
-  color: Colors.BACKGROUND_COLOR,
+  color: new THREE.Color(Colors.BACKGROUND_COLOR),
 });
 const background = new THREE.Mesh(geometryBackground, materialBackground);
 background.receiveShadow = true;
@@ -95,113 +99,102 @@ class Cell {
     this.y = y;
     this.geometry = new THREE.BoxGeometry(1, 1, 1);
     this.material = new THREE.MeshLambertMaterial({
-      color: Colors.BACKGROUND_COLOR,
-      emissive: Colors.BACKGROUND_COLOR,
+      color: new THREE.Color(Colors.BACKGROUND_COLOR),
+      emissive: new THREE.Color(Colors.BACKGROUND_COLOR),
       emissiveIntensity: 0.5,
     });
     this.mesh = new THREE.Mesh(this.geometry, this.material);
     this.mesh.position.set(x, y, 0);
-    this.mixer = new THREE.AnimationMixer(this.mesh);
-
-    this.mixer.addEventListener("finished", (event) => {
-      const name = event.action._clip.name;
-      if (name.startsWith("toColor:")) {
-        const hexString = name.split(":")[1];
-        this.setColor(new THREE.Color(hexString));
-      }
-    });
+    this.positionMixer = new THREE.AnimationMixer(this.mesh);
+    this.colorMixer = new THREE.AnimationMixer(this.mesh);
   }
 
-  initialize() {
+  async initialize() {
     this.sunk = Math.round(Math.random()) === 0;
     this.charted = false;
 
-    setTimeout(() => {
-      if (this.sunk) {
-        this.changeColor(
-          Colors.BACKGROUND_COLOR,
-          Colors.WATER_COLOR,
-          1 * SPEED_MODIFIER
-        );
-      } else {
-        this.changeColor(
-          Colors.BACKGROUND_COLOR,
-          Colors.ISLAND_COLOR,
-          1 * SPEED_MODIFIER
-        );
-        this.changeScale(
-          new THREE.Vector3(1, 1, 1),
-          new THREE.Vector3(1, 1, 2),
-          1 * SPEED_MODIFIER
-        );
-      }
-    }, Math.random() * 1000 * SPEED_MODIFIER);
+    await delay(Math.random() * 1000 * SPEED_MODIFIER);
+    if (this.sunk) {
+      this.changeColor(
+        new THREE.Color(Colors.WATER_COLOR),
+        1000 * SPEED_MODIFIER
+      );
+    } else {
+      this.changeColor(
+        new THREE.Color(Colors.ISLAND_COLOR),
+        1000 * SPEED_MODIFIER
+      );
+      this.changeZPosition(0.5, 1000 * SPEED_MODIFIER);
+    }
   }
 
   setColor(color) {
-    this.material.color = color;
+    this.material.color.r = color.r;
+    this.material.color.g = color.g;
+    this.material.color.b = color.b;
   }
 
   activateCursor() {
-    this.setColor(Colors.CURSOR_COLOR);
+    this.setColor(new THREE.Color(Colors.CURSOR_COLOR));
   }
 
   deactivateCursor() {
-    this.setColor(Colors.WATER_COLOR);
+    this.setColor(new THREE.Color(Colors.WATER_COLOR));
   }
 
-  changeColor(fromColor, toColor, duration) {
-    const action = this.mixer.clipAction(
-      new Animations.ColorTransition(
-        `toColor:#${toColor.getHexString()}`,
-        fromColor,
-        toColor,
+  changeColor(toColor, duration, onCompleteCallback = () => {}) {
+    new JEASINGS.JEasing(this.material.color)
+      .to(
+        {
+          r: toColor.r,
+          g: toColor.g,
+          b: toColor.b,
+        },
         duration
-      ).animationClip
-    );
-    action.clampWhenFinished = true;
-    action.setLoop(THREE.LoopOnce);
-    action.play();
+      )
+      .easing(JEASINGS.Cubic.Out)
+      .start()
+      .onComplete(onCompleteCallback);
   }
 
-  changePosition(fromVector, toVector, duration) {
-    const action = this.mixer.clipAction(
-      new Animations.PositionTransition(
-        "position",
-        fromVector,
-        toVector,
+  changeZPosition(changeInZ, duration) {
+    new JEASINGS.JEasing(this.mesh.position)
+      .to(
+        {
+          x: this.mesh.position.x,
+          y: this.mesh.position.y,
+          z: this.mesh.position.z + changeInZ,
+        },
         duration
-      ).animationClip
-    );
-    action.clampWhenFinished = true;
-    action.setLoop(THREE.LoopOnce);
-    action.play();
+      )
+      .easing(JEASINGS.Cubic.Out)
+      .start();
   }
 
   changeScale(fromVector, toVector, duration) {
-    const action = this.mixer.clipAction(
+    const action = this.positionMixer.clipAction(
       new Animations.ScaleTransition("sinking", fromVector, toVector, duration)
         .animationClip
     );
     action.clampWhenFinished = true;
     action.setLoop(THREE.LoopOnce);
+    action.reset();
     action.play();
   }
 
   chart() {
     this.charted = true;
-    this.setColor(Colors.CHARTED_COLOR);
+    this.setColor(new THREE.Color(Colors.CHARTED_COLOR));
   }
 
   sink() {
     if (!this.sunk) {
       this.sunk = true;
-      this.setColor(Colors.WATER_COLOR, 1);
-      this.changeScale(
-        new THREE.Vector3(1, 1, 2),
-        new THREE.Vector3(1, 1, 0),
-        2 * SPEED_MODIFIER
+      this.changeColor(
+        new THREE.Color(Colors.WATER_COLOR),
+        1000 * SPEED_MODIFIER
       );
+      this.changeZPosition(-0.5, 2000 * SPEED_MODIFIER);
     }
   }
 }
@@ -267,11 +260,13 @@ while (true) {
 }
 
 function animate() {
+  JEASINGS.update();
   const delta = clock.getDelta(); // never call this more than once during an animation loop
   const cellIterator = grid.cells();
   let cell = cellIterator.next();
   while (!cell.done) {
-    cell.value.mixer.update(delta);
+    cell.value.colorMixer.update(delta);
+    cell.value.positionMixer.update(delta);
     cell = cellIterator.next();
   }
   renderer.render(scene, camera);

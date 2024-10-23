@@ -1,4 +1,9 @@
-import { AnimationClip, ColorKeyframeTrack, VectorKeyframeTrack } from "three";
+import {
+  AnimationClip,
+  ColorKeyframeTrack,
+  KeyframeTrack,
+  VectorKeyframeTrack,
+} from "three";
 
 class ColorTransition {
   constructor(name, startColor, endColor, duration) {
@@ -18,12 +23,12 @@ class ColorTransition {
   }
 }
 
-class PositionTransition {
-  constructor(name, fromVector, toVector, duration) {
-    const keyframeTrack = new VectorKeyframeTrack(
-      ".position",
+class ZPositionTransition {
+  constructor(name, fromZ, toZ, duration) {
+    const keyframeTrack = new KeyframeTrack(
+      ".position[z]",
       [0, duration],
-      [...fromVector.toArray(), ...toVector.toArray()]
+      [fromZ, toZ]
     );
     const animationClip = new AnimationClip(
       name,
@@ -54,4 +59,4 @@ class ScaleTransition {
   }
 }
 
-export { ColorTransition, PositionTransition, ScaleTransition };
+export { ColorTransition, ZPositionTransition, ScaleTransition };

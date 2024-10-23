@@ -1,12 +1,12 @@
 import { Color } from "three";
 
-const AMBIENT_LIGHT_COLOR = new Color("#F8F9FA");
-const BACKGROUND_COLOR = new Color("#212529");
-const CHARTED_COLOR = new Color("#FFFFFF");
-const CURSOR_COLOR = new Color("#FFFFFF");
-const DIRECITONAL_LIGHT_COLOR = new Color("#F8F9FA");
-const ISLAND_COLOR = new Color("#ADB5BD");
-const WATER_COLOR = new Color("#212529");
+const AMBIENT_LIGHT_COLOR = "#F8F9FA";
+const BACKGROUND_COLOR = "#212529";
+const CHARTED_COLOR = "#FFFFFF";
+const CURSOR_COLOR = "#FFFFFF";
+const DIRECITONAL_LIGHT_COLOR = "#F8F9FA";
+const ISLAND_COLOR = "#ADB5BD";
+const WATER_COLOR = "#212529";
 
 export {
   AMBIENT_LIGHT_COLOR,
