@@ -1,16 +1,42 @@
 import * as THREE from "three";
-import * as Animations from "./animations";
-import * as Colors from "./colors";
 import JEASINGS from "jeasings";
 
+// Constants
+const AMBIENT_LIGHT_COLOR = "#F8F9FA";
+const BACKGROUND_COLOR = "#212529";
+const CHARTED_COLOR = "#FFFFFF";
+const CURSOR_COLOR = "#FFFFFF";
+const DIRECITONAL_LIGHT_COLOR = "#F8F9FA";
+const ISLAND_COLOR = "#ADB5BD";
+const WATER_COLOR = "#212529";
+
+// Smaller modifier leads to lower delays which makes the animations faster
+const DELAY_MODIFIERS = [0, 0.1, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+
+// Utilities
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
+// Global State
 let ISLAND_COUNT = 0;
-let SPEED_MODIFIER = 0.5;
+let DELAY_MODIFIER_INDEX = 5; // Starting modifier of 1
+let DELAY_MODIFIER = DELAY_MODIFIERS[DELAY_MODIFIER_INDEX];
+
+document.getElementById("slower").addEventListener("click", () => {
+  if (DELAY_MODIFIER_INDEX < DELAY_MODIFIERS.length - 1) {
+    DELAY_MODIFIER_INDEX++;
+    DELAY_MODIFIER = DELAY_MODIFIERS[DELAY_MODIFIER_INDEX];
+  }
+});
+document.getElementById("faster").addEventListener("click", () => {
+  if (DELAY_MODIFIER_INDEX > 0) {
+    DELAY_MODIFIER_INDEX--;
+    DELAY_MODIFIER = DELAY_MODIFIERS[DELAY_MODIFIER_INDEX];
+  }
+});
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
-  75,
+  80,
   window.innerWidth / window.innerHeight
 );
 const renderer = new THREE.WebGLRenderer();
@@ -20,10 +46,10 @@ document.body.appendChild(renderer.domElement);
 
 const clock = new THREE.Clock();
 
-scene.add(new THREE.AmbientLight(new THREE.Color(Colors.AMBIENT_LIGHT_COLOR)));
+scene.add(new THREE.AmbientLight(new THREE.Color(AMBIENT_LIGHT_COLOR)));
 
 const light = new THREE.DirectionalLight(
-  new THREE.Color(Colors.DIRECITONAL_LIGHT_COLOR),
+  new THREE.Color(DIRECITONAL_LIGHT_COLOR),
   2.5
 );
 light.position.set(0, 0, 1);
@@ -33,7 +59,7 @@ scene.add(light);
 
 const geometryBackground = new THREE.PlaneGeometry(1000, 1000);
 const materialBackground = new THREE.MeshPhongMaterial({
-  color: new THREE.Color(Colors.BACKGROUND_COLOR),
+  color: new THREE.Color(BACKGROUND_COLOR),
 });
 const background = new THREE.Mesh(geometryBackground, materialBackground);
 background.receiveShadow = true;
@@ -99,8 +125,8 @@ class Cell {
     this.y = y;
     this.geometry = new THREE.BoxGeometry(1, 1, 1);
     this.material = new THREE.MeshLambertMaterial({
-      color: new THREE.Color(Colors.BACKGROUND_COLOR),
-      emissive: new THREE.Color(Colors.BACKGROUND_COLOR),
+      color: new THREE.Color(BACKGROUND_COLOR),
+      emissive: new THREE.Color(BACKGROUND_COLOR),
       emissiveIntensity: 0.5,
     });
     this.mesh = new THREE.Mesh(this.geometry, this.material);
@@ -113,18 +139,12 @@ class Cell {
     this.sunk = Math.round(Math.random()) === 0;
     this.charted = false;
 
-    await delay(Math.random() * 1000 * SPEED_MODIFIER);
+    await delay(Math.random() * 1000 * DELAY_MODIFIER);
     if (this.sunk) {
-      this.changeColor(
-        new THREE.Color(Colors.WATER_COLOR),
-        1000 * SPEED_MODIFIER
-      );
+      this.changeColor(new THREE.Color(WATER_COLOR), 1000 * DELAY_MODIFIER);
     } else {
-      this.changeColor(
-        new THREE.Color(Colors.ISLAND_COLOR),
-        1000 * SPEED_MODIFIER
-      );
-      this.changeZPosition(0.5, 1000 * SPEED_MODIFIER);
+      this.changeColor(new THREE.Color(ISLAND_COLOR), 1000 * DELAY_MODIFIER);
+      this.changeZPosition(0.5, 1000 * DELAY_MODIFIER);
     }
   }
 
@@ -135,11 +155,11 @@ class Cell {
   }
 
   activateCursor() {
-    this.setColor(new THREE.Color(Colors.CURSOR_COLOR));
+    this.setColor(new THREE.Color(CURSOR_COLOR));
   }
 
   deactivateCursor() {
-    this.setColor(new THREE.Color(Colors.WATER_COLOR));
+    this.setColor(new THREE.Color(WATER_COLOR));
   }
 
   changeColor(toColor, duration, onCompleteCallback = () => {}) {
@@ -171,30 +191,16 @@ class Cell {
       .start();
   }
 
-  changeScale(fromVector, toVector, duration) {
-    const action = this.positionMixer.clipAction(
-      new Animations.ScaleTransition("sinking", fromVector, toVector, duration)
-        .animationClip
-    );
-    action.clampWhenFinished = true;
-    action.setLoop(THREE.LoopOnce);
-    action.reset();
-    action.play();
-  }
-
   chart() {
     this.charted = true;
-    this.setColor(new THREE.Color(Colors.CHARTED_COLOR));
+    this.setColor(new THREE.Color(CHARTED_COLOR));
   }
 
   sink() {
     if (!this.sunk) {
       this.sunk = true;
-      this.changeColor(
-        new THREE.Color(Colors.WATER_COLOR),
-        1000 * SPEED_MODIFIER
-      );
-      this.changeZPosition(-0.5, 2000 * SPEED_MODIFIER);
+      this.changeColor(new THREE.Color(WATER_COLOR), 1000 * DELAY_MODIFIER);
+      this.changeZPosition(-0.5, 2000 * DELAY_MODIFIER);
     }
   }
 }
@@ -217,7 +223,7 @@ async function numberOfIslands(grid) {
     }
 
     cell.chart();
-    await delay(100 * SPEED_MODIFIER);
+    await delay(100 * DELAY_MODIFIER);
     await Promise.all([
       depthFirstSearch(column - 1, row),
       depthFirstSearch(column, row - 1),
@@ -229,14 +235,14 @@ async function numberOfIslands(grid) {
   for (let row = 0; row < grid.numberOfRows; row++) {
     for (let column = 0; column < grid.numberOfColumns; column++) {
       grid.cellData[row][column].activateCursor();
-      await delay(100 * SPEED_MODIFIER);
+      await delay(100 * DELAY_MODIFIER);
       // grid.cellData[row][column].cursor;
       if (!grid.cellData[row][column].sunk) {
         await depthFirstSearch(column, row);
-        await delay(250 * SPEED_MODIFIER);
+        await delay(250 * DELAY_MODIFIER);
         grid.sinkChartedIslands();
         ISLAND_COUNT += 1;
-        document.getElementById("island-count").innerHTML = ISLAND_COUNT;
+        document.getElementById("count").innerHTML = ISLAND_COUNT;
       }
       grid.cellData[row][column].deactivateCursor();
     }
@@ -251,7 +257,7 @@ camera.position.z = 25;
 
 async function restart() {
   grid.reset();
-  await delay(2500 * SPEED_MODIFIER);
+  await delay(2500 * DELAY_MODIFIER);
   await numberOfIslands(grid);
 }
 
